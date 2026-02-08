@@ -7,22 +7,33 @@ CREATE STAGE give.landing.raw_stage;
 
 -- load files to stage from local machine by running code in load_to_stage.sql
 
+
 -- create file format
 CREATE OR REPLACE FILE FORMAT give.landing.ff_json
   TYPE = JSON
   STRIP_OUTER_ARRAY = TRUE;  -- use TRUE if the JSON file is one big array 
 
--- test file format
-SELECT
-$1::variant AS payload,
-METADATA$FILENAME AS filename
-FROM @give.landing.raw_stage/charitycommission/charity/publicextract.charity.zip
-(FILE_FORMAT => give.landing.ff_json)
--- PATTERN = '.*\.json\.zip$'
-    limit 10
-    ;
 
--- Create a landing table for charity data (store raw JSON in VARIANT)
+
+  SELECT
+    $1::variant AS payload,
+    METADATA$FILENAME AS filename
+  FROM @give.landing.raw_stage/charitycommission/charity/publicextract.charity.zip
+    (FILE_FORMAT => give.landing.ff_json)
+    -- PATTERN = '.*\.json\.zip$'
+      limit 10
+      ;
+    ON_ERROR = 'ABORT_STATEMENT';;
+
+
+
+-- SHOW MFA METHODS FOR USER kseniagerm;
+-- ALTER USER kseniagerm REMOVE MFA METHOD TOTP_6RBP;
+-- ALTER USER kseniagerm SET MINS_TO_BYPASS_MFA = 30;
+
+ls @give.landing.raw_stage/charitycommission/;
+
+-- Create a target table (store raw JSON in VARIANT)
 CREATE OR REPLACE TABLE give.landing.charity (
   payload variant,
   filename string,
@@ -41,7 +52,7 @@ FROM (
     METADATA$FILE_LAST_MODIFIED::TIMESTAMP_NTZ AS file_last_modified_at,
     METADATA$FILE_ROW_NUMBER AS file_row_number,
     METADATA$FILE_CONTENT_KEY AS file_content_key,
-    CURRENT_TIMESTAMP() AS loaded_at
+    SYSDATE() AS loaded_at
   FROM @give.landing.raw_stage/charitycommission/publicextract.charity.json.gz
     ( FILE_FORMAT => give.landing.ff_json )
 )
@@ -50,11 +61,9 @@ ON_ERROR = 'SKIP_FILE';
 
 create schema give.raw;
 
-
--- load charity records to table to raw table `give.raw.charity`, parsing json payload fields, 
--- and casting to data types according to data definition file
 create or replace table give.raw.charity as (
 select distinct
+-- *
     payload:date_of_extract::date as date_of_extract
     , payload:organisation_number::number as organisation_number
     , payload:registered_charity_number::number as registered_charity_number
@@ -97,3 +106,46 @@ select distinct
     from give.landing.charity
     )
 ;
+
+-- load charity_classification
+
+-- create table
+-- Create a target table (store raw JSON in VARIANT)
+CREATE OR REPLACE TABLE give.landing.charity_classification (
+  payload variant,
+  filename string,
+  file_last_modified_at timestamp_ntz,
+  file_row_number number,
+  file_content_key varchar(100),
+  loaded_at TIMESTAMP_NTZ DEFAULT SYSDATE()
+);
+
+-- load data from stage to table
+COPY INTO give.landing.charity_classification
+FROM (
+  SELECT
+    $1::VARIANT AS payload,
+    METADATA$FILENAME AS filename,
+    METADATA$FILE_LAST_MODIFIED::TIMESTAMP_NTZ AS file_last_modified_at,
+    METADATA$FILE_ROW_NUMBER AS file_row_number,
+    METADATA$FILE_CONTENT_KEY AS file_content_key,
+    SYSDATE() AS loaded_at
+  FROM @give.landing.raw_stage/charitycommission/publicextract.charity_classification.json.gz
+    ( FILE_FORMAT => give.landing.ff_json )
+)
+ON_ERROR = 'SKIP_FILE';
+;
+
+-- create raw table `give.raw.charity_classification`, parsing payload fields, and type casting
+create or replace table give.raw.charity_classification as (
+    select distinct
+        payload:date_of_extract::date as date_of_extract
+        , payload:organisation_number::number as organisation_number
+        , payload:registered_charity_number::number as registred_charity_number
+        , payload:linked_charity_number::number as linked_charity_number
+        , payload:classification_code::number as classification_code
+        , payload:classification_type::string as classification_type
+        , payload:classification_description::string as classification_description
+        
+        from give.landing.charity_classification
+    );
