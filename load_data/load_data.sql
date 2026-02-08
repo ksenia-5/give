@@ -1,39 +1,33 @@
 
--- in snowflake create DB, schema, and stage to load files from local filesystem
+--------------------------------------------------------
+----- Create DB, schema, and internal stage
+--------------------------------------------------------
 CREATE DATABASE IF NOT EXISTS give;
 CREATE SCHEMA IF NOT EXISTS give.landing;
 CREATE STAGE give.landing.raw_stage;
 
 
--- load files to stage from local machine by running code in load_to_stage.sql
-
-
--- create file format
+--------------------------------------------------------
+----- Create file format
+--------------------------------------------------------
 CREATE OR REPLACE FILE FORMAT give.landing.ff_json
   TYPE = JSON
   STRIP_OUTER_ARRAY = TRUE;  -- use TRUE if the JSON file is one big array 
 
-
-
+--------------------------------------------------------
+----- Test file format
+--------------------------------------------------------
   SELECT
     $1::variant AS payload,
     METADATA$FILENAME AS filename
-  FROM @give.landing.raw_stage/charitycommission/charity/publicextract.charity.zip
-    (FILE_FORMAT => give.landing.ff_json)
-    -- PATTERN = '.*\.json\.zip$'
+  FROM @give.landing.raw_stage/charitycommission/publicextract.charity.json.gz
+    ( FILE_FORMAT => give.landing.ff_json )
       limit 10
       ;
-    ON_ERROR = 'ABORT_STATEMENT';;
 
-
-
--- SHOW MFA METHODS FOR USER kseniagerm;
--- ALTER USER kseniagerm REMOVE MFA METHOD TOTP_6RBP;
--- ALTER USER kseniagerm SET MINS_TO_BYPASS_MFA = 30;
-
-ls @give.landing.raw_stage/charitycommission/;
-
--- Create a target table (store raw JSON in VARIANT)
+--------------------------------------------------------
+----- Create CHARITY landing table  
+--------------------------------------------------------
 CREATE OR REPLACE TABLE give.landing.charity (
   payload variant,
   filename string,
@@ -43,7 +37,9 @@ CREATE OR REPLACE TABLE give.landing.charity (
   loaded_at TIMESTAMP_NTZ DEFAULT SYSDATE()
 );
 
--- load data from stage to table
+--------------------------------------------------------
+----- Create CHARITY data from stage to table  
+--------------------------------------------------------
 COPY INTO give.landing.charity
 FROM (
   SELECT
@@ -59,11 +55,16 @@ FROM (
 ON_ERROR = 'SKIP_FILE';
 ;
 
-create schema give.raw;
+--------------------------------------------------------
+----- Create STAGING schema  
+--------------------------------------------------------
+create schema give.staging;
 
-create or replace table give.raw.charity as (
+---------------------------------------------------------------------------------
+----- Create STAGING CHARITY table, parsing and type casting payload fields 
+---------------------------------------------------------------------------------
+create or replace table give.staging.charity as (
 select distinct
--- *
     payload:date_of_extract::date as date_of_extract
     , payload:organisation_number::number as organisation_number
     , payload:registered_charity_number::number as registered_charity_number
@@ -107,10 +108,10 @@ select distinct
     )
 ;
 
--- load charity_classification
 
--- create table
--- Create a target table (store raw JSON in VARIANT)
+--------------------------------------------------------
+----- Creating LANDING table CHARITY_CLASSIFICATION
+--------------------------------------------------------
 CREATE OR REPLACE TABLE give.landing.charity_classification (
   payload variant,
   filename string,
@@ -120,7 +121,9 @@ CREATE OR REPLACE TABLE give.landing.charity_classification (
   loaded_at TIMESTAMP_NTZ DEFAULT SYSDATE()
 );
 
--- load data from stage to table
+------------------------------------------------------------
+----- Load CHARITY_CLASSIFICATION data from stage to table
+------------------------------------------------------------
 COPY INTO give.landing.charity_classification
 FROM (
   SELECT
@@ -136,8 +139,10 @@ FROM (
 ON_ERROR = 'SKIP_FILE';
 ;
 
--- create raw table `give.raw.charity_classification`, parsing payload fields, and type casting
-create or replace table give.raw.charity_classification as (
+------------------------------------------------------------------------------------------------------
+----- Create STAGING CHARITY_CLASSIFICATION table, parsing and type casting payload fields 
+------------------------------------------------------------------------------------------------------
+create or replace table give.staging.charity_classification as (
     select distinct
         payload:date_of_extract::date as date_of_extract
         , payload:organisation_number::number as organisation_number
