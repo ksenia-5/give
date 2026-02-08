@@ -1,0 +1,22 @@
+---
+config:
+  layout: elk
+---
+erDiagram
+  CHARITY ||--o{ CHARITY_ANNUAL_RETURN_HISTORY : "organisation_number"
+  CHARITY ||--o{ CHARITY_AR_PARTA : "organisation_number"
+  CHARITY ||--o{ CHARITY_AR_PARTB : "organisation_number (income>£500k subset)"
+  
+  CHARITY ||--o{ CHARITY_AREA_OF_OPERATION : "organisation_number"
+  CHARITY ||--o{ CHARITY_CLASSIFICATION : "organisation_number"
+  CHARITY ||--o{ CHARITY_POLICY : "organisation_number"
+  CHARITY ||--o{ CHARITY_OTHER_NAMES : "organisation_number"
+  CHARITY ||--o{ CHARITY_OTHER_REGULATORS : "organisation_number"
+  CHARITY ||--o{ CHARITY_PUBLISHED_REPORT : "organisation_number"
+  
+  CHARITY ||--o| CHARITY_GOVERNING_DOCUMENT : "organisation_number"
+  
+  CHARITY ||--o{ CHARITY_EVENT_HISTORY : "organisation_number"
+  CHARITY_EVENT_HISTORY }o--o| CHARITY : "assoc_organisation_number (optional)"
+  
+  CHARITY ||--o{ CHARITY_TRUSTEE : "organisation_number"
