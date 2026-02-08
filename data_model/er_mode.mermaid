@@ -1,0 +1,21 @@
+---
+config:
+  look: neo
+  layout: elk
+---
+erDiagram
+  REGISTERED_CHARITY ||--|{ CHARITY_UNIT : "groups (registered_charity_number)"
+  CHARITY_UNIT ||--o{ ANNUAL_RETURN_PERIOD : "has"
+  ANNUAL_RETURN_PERIOD ||--o| AR_PARTA : "details"
+  ANNUAL_RETURN_PERIOD ||--o| AR_PARTB : "details (income>£500k)"
+  CHARITY_UNIT ||--o{ AREA_OF_OPERATION : "operates_in"
+  CHARITY_UNIT ||--o{ CLASSIFICATION : "classified_as (What/How/Who)"
+  CHARITY_UNIT ||--o{ POLICY : "has"
+  CHARITY_UNIT ||--o{ OTHER_NAME : "known_as"
+  CHARITY_UNIT ||--o{ OTHER_REGULATOR : "regulated_by"
+  CHARITY_UNIT ||--o| GOVERNING_DOCUMENT : "defined_by"
+  CHARITY_UNIT ||--o{ PUBLISHED_REPORT : "has"
+  CHARITY_UNIT ||--o{ CHARITY_EVENT : "event_history"
+  CHARITY_EVENT }o--o| CHARITY_UNIT : "assoc_charity (optional)"
+  CHARITY_UNIT ||--o{ TRUSTEESHIP : "has"
+  TRUSTEE ||--o{ TRUSTEESHIP : "serves_as"
