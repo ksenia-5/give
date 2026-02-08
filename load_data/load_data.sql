@@ -6,6 +6,11 @@ CREATE DATABASE IF NOT EXISTS give;
 CREATE SCHEMA IF NOT EXISTS give.landing;
 CREATE STAGE give.landing.raw_stage;
 
+------------------------------------------------------------------------------------------
+----- Load files to internal stage from local drive using snow CLI in VSCode
+------------------------------------------------------------------------------------------
+-- -- to load the following json files in data/ folder to snowflake internal stage
+-- -- run `snow sql -f load_data.sql` in terminal using snow CLI
 
 --------------------------------------------------------
 ----- Create file format
